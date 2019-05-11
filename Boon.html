@@ -1,0 +1,1714 @@
+<!DOCTYPE html >
+    <head>
+        <meta charset="utf-8"/>
+        <title>Boon Engine</title>
+        <link rel="stylesheet" type="text/css" href="main.css">
+    </head>
+
+<body>
+
+    <div id="tree"> </div>
+
+    <!-- context menu -->
+    <div class="menu">
+      <ul class="menu-options">
+        <li class="menu-option">Change Brush</li>
+        <li class="menu-option">Set Cursor</li>
+        <li class="menu-option">Change Mode</li>
+        <li class="menu-option">Save</li>
+        <!-- check condition -->
+        <li class="menu-option">Delete object</li>
+      </ul></div>
+
+    <div id='ToolPannel'>
+        <button id='add'>
+        
+        <div id='buildCodeBundle'>
+            <div id='buildCode' onclick="instantiate('Cube')" >Cube</div>
+            <div id='buildCode' onclick="instantiate('Cylinder')" >Cylinder</div>
+            <div id='buildCode' onclick="instantiate('Sphere')" >Sphere</div>
+            <div id='buildCode' onclick="instantiate('Plane')" >Plane</div>
+            <div id='buildCode' onclick="instantiate('Circle')" >Circle</div>
+        </div>
+        <div id='buildCode'> Add </div>
+        </button>
+
+        <button id='edit'>edit</button>
+        <button id="play">></button> </div>
+    <div id='rightPannel'>
+
+        <center>
+            <div id="transform">
+                <input  placeholder="x position" id='xpos'>
+                <input  placeholder="y position" id='ypos'>
+                <input  placeholder="z position" id='zpos'><br>
+
+                <input  placeholder="x rotation" id='xrot'>
+                <input  placeholder="y rotation" id='yrot'>
+                <input  placeholder="z rotation" id='zrot'><br>
+
+                <input  placeholder="x scale" id='xscal'>
+                <input  placeholder="y scale" id='yscal'>
+                <input  placeholder="z scale" id='zscal'><br>
+            </div>
+                <div id="code">
+                <textarea  placeholder="code" id='getcode' ></textarea> 
+                </div>
+                <button>Add modifier</button>
+
+        </center></div>
+
+
+   
+    <script type="text/javascript" charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/104/three.min.js"></script>
+   
+        <script>
+
+                        function _(id){
+                return document.getElementById(id)
+            }
+                    util = {
+
+            detach: function ( child, parent, scene ) {
+
+                child.applyMatrix( parent.matrixWorld );
+                parent.remove( child );
+                scene.add( child );
+
+            },
+
+            attach: function ( child, scene, parent ) {
+
+                child.applyMatrix( new THREE.Matrix4().getInverse( parent.matrixWorld ) );
+
+                scene.remove( child );
+                parent.add( child );
+
+            }
+
+        };
+
+               function __(id){
+            return document.getElementsByClassName(id)[0]
+        }
+
+
+
+        function ARlength(ar) {
+
+                    if ( !Array.isArray(ar) ) {
+                        return 0;
+                    }
+                    //object array length
+                    var i = 0;
+
+                    for( val in ar){
+                        i++
+                    }
+
+                    return i;
+        }
+
+
+
+            var center = new THREE.Vector3();
+            var cursor3d = new THREE.Vector3();
+            
+            var witness = { doubleAxisBtn:false,edit: false, boxselect: false, rotate: false, scale: false, camera: false, drag: false,axisBtn:false,transformOperation:false }
+            var PivotMode = {type: 'centroid'}
+            var offset = new THREE.Vector3()
+
+            var InteractableObj = [];
+            var Interactablevrt = [];
+            var transform = {x:0,y:0,z:0};
+
+            //when attaching we remove object from the scene
+
+            function createDot(colo) {
+              const canvas = document.createElement('canvas')
+              canvas.width = 32
+              canvas.height = 32
+              const ctx = canvas.getContext('2d')
+              ctx.beginPath()
+              ctx.arc(16,16,16,0,Math.PI*2)
+              ctx.fillStyle = colo
+              ctx.fill()
+              return new THREE.CanvasTexture(canvas)
+             }
+
+            var scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 3000 );
+            camera.position.set( 4, 3, 5 );
+            camera.lookAt(center);
+            var renderer = new THREE.WebGLRenderer({     antialias: true });
+
+            function l(para){
+                console.log(para)
+            }
+
+            function updaterender(){
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize( window.innerWidth, window.innerHeight );
+            }
+            
+            updaterender()
+
+
+            
+            document.body.appendChild( renderer.domElement );
+
+
+            scene.fog = new THREE.FogExp2( 0x000000, 0.0128 );
+            renderer.setClearColor( scene.fog.color, 1 );
+
+            var size = 100;
+            var separation = 0.5;
+
+            var geometry = new THREE.Geometry();
+            geometry.vertices.push(new THREE.Vector3( - size, 0, 0 ) );
+            geometry.vertices.push(new THREE.Vector3( size, 0, 0 ) );
+            linesMaterial = new THREE.LineBasicMaterial( { color: 0x787878, opacity: .1, linewidth: 0.1 } );
+
+            ZlineMaterial = new THREE.LineBasicMaterial( { color: 0x94f5c6, opacity: .2, linewidth: .1 } );
+            XlineMaterial = new THREE.LineBasicMaterial( { color: 0xf594a7, opacity: .2, linewidth: .1 } ); 
+            YlineMaterial = new THREE.LineBasicMaterial( { color: 0x94b6f5, opacity: .2, linewidth: .1 } );
+
+            //to do summarize this
+            
+
+            function createAxisHelper(parent,newName) {
+
+                        var AxisHelper = new THREE.Group();
+                        AxisHelper.name = newName;
+
+                        parent.add(AxisHelper)
+
+                        var line = new THREE.Line( geometry,XlineMaterial);  
+                        // line.position.z = 0
+                        line.name = 'x'
+                        AxisHelper.add( line )
+
+                        var line = new THREE.Line( geometry,ZlineMaterial);  
+                        // line.position.x = 0;
+                        line.rotation.y = 90 * Math.PI / 180;
+                        line.name = 'z'
+                        AxisHelper.add( line )
+
+                        var line = new THREE.Line( geometry,YlineMaterial);  
+                        // line.position.x = 0
+                        line.rotation.z = 90 * Math.PI / 180;
+                        line.name = 'y'
+                        AxisHelper.add( line )
+
+            }
+
+            
+
+            function showAxis(axisname,which){
+                for (key in transform){
+
+                    var objectAxis = scene.getObjectByName(axisname).getObjectByName(key)
+
+                    if (which == key) {
+                        console.log(which,key,'t')
+                        // objectAxis.scale.set(1,1,1)
+                        // util.traverseHierarchy( objectAxis, function ( objectAxis ) { objectAxis.visible = true; } );
+
+                    }else{
+                        // objectAxis.scale.set(0,0,0)
+                        console.log(which,key,'f')
+                        // util.traverseHierarchy( objectAxis, function ( objectAxis ) { objectAxis.visible = false; } );              
+                    }
+
+                }
+            }
+
+            // createAxisHelper(scene,'referenceAxis')
+            // showAxis('referenceAxis','none')
+            // scene.getObjectByName('referenceAxis').position.x = -3
+            // showAxis('referenceAxis','x')
+
+            function createMainGrid(){
+
+                var Maingrid = new THREE.Group();
+                for ( var i = -(size/separation); i <= size/separation; i ++ ) {
+
+                    
+                    if (i == 0){
+                        //colored grid
+                        createAxisHelper(Maingrid,'mainAxishelper')
+                    }
+
+                    //X half grid
+
+                    var line = new THREE.Line( geometry,linesMaterial);  
+                    line.position.z = i *  separation;
+                    Maingrid.add( line );
+
+                    // Y half grid
+                    var line = new THREE.Line( geometry, linesMaterial );
+                    line.position.x = i *  separation;
+                    line.rotation.y = 90 * Math.PI / 180;
+                    Maingrid.add( line );
+
+
+                }
+                scene.add(Maingrid)
+
+            }
+
+            createMainGrid()
+
+            scene.add( new THREE.AmbientLight( 0xaaaaaa, 0.2 ) );
+            var light = new THREE.DirectionalLight( 0xddffdd, 0.6 );
+            light.position.set( 1, 1, 1 );
+            light.castShadow = true;
+            light.shadow.mapSize.width = 1024;
+            light.shadow.mapSize.height = 1024;
+            var d = 10;
+            light.shadow.camera.left = - d;
+            light.shadow.camera.right = d;
+            light.shadow.camera.top = d;
+            light.shadow.camera.bottom = - d;
+            light.shadow.camera.far = 1000;
+            scene.add( light );
+            camera.position.z = 5;
+
+
+
+
+var _mouse = new THREE.Vector2();
+var _plane = new THREE.Plane();
+var _offset = new THREE.Vector3();
+
+var initialOffset = new THREE.Vector3();
+
+var _intersection = new THREE.Vector3();
+var _worldPosition = new THREE.Vector3();
+var _inverseMatrix = new THREE.Matrix4();
+var shiftDWN = false;
+var _raycaster = new THREE.Raycaster();
+
+var _domElement = renderer.domElement;
+
+var objectdealingwith = null;
+
+//change the plane model
+var FakeSelector = new selectioninst(renderer,'fakeSelect');
+var Fakefrustum = new SelectionBox( camera);
+var TAGmouse = {X:0,Y:0};
+var controlsmouse = {startX:0,startY:0,endx:0,endY:0,CurrentX:0,CurrentY:0};
+
+var _selectedArray = [];
+//array of selected object (initializer shift key)
+
+var _selected = null;
+var mode = 0;
+var whenNselected = '#ffffff';
+var whenselected = '#f2a82a';
+var canvas = renderer.domElement;
+
+//drop it under this cat
+var pivot = new THREE.Group();
+scene.add( pivot );
+
+                       
+var indicator = new THREE.Mesh( new THREE.PlaneGeometry( 0.1, 0.1 ), new THREE.MeshBasicMaterial( { color:0xffffff,side: THREE.DoubleSide, depthTest: false, map: createDot('red'),} ) );
+indicator.name = 'indicator';
+pivot.add(indicator);
+
+
+
+
+
+
+function getCentroid(array) {
+                var k = ARlength(array);
+
+                var sm = new THREE.Vector3;
+
+                for (valued in _selectedArray){
+
+                    sm.add( _selectedArray[valued].position.clone() );
+                }
+
+                return sm.multiplyScalar(1/k)
+}
+
+function applyParentTRS(childvector,parent,scale) {
+
+                //scale to optimize
+
+                if (!scale) {
+                    var scale = parent.scale.clone()
+                }
+                    var vectorpos = childvector.clone().multiply(scale);
+
+                    var oldEuler = new THREE.Euler(parent.rotation.x, parent.rotation.y, parent.rotation.z, 'XYZ' );
+                    var quat = new THREE.Quaternion();
+                    quat.setFromEuler(oldEuler);
+                    vectorpos.applyQuaternion(quat)
+
+                    //apply position
+                    return parent.position.clone().add( vectorpos )               
+}
+
+
+var vertexui = {
+
+vertexlookat: function() {
+
+            if (_selected != null && mode == 1) {
+                    for (var i = _selected.geometry.vertices.length - 1; i >= 0; i--) {
+                        scene.getObjectByName( 'vxc_'+i ).lookAt(camera.position)
+                        scene.getObjectByName( 'vxc_'+i ).scale.set(1,1,1) 
+                }
+            }
+    },
+
+Draw: function(){
+
+            if (_selected != null && mode == 1) {
+
+                var scaleVector = _selected.scale.clone()
+
+                for (var i = _selected.geometry.vertices.length - 1; i >= 0; i--) {
+
+                    var newvertexposition = new THREE.Vector3();
+                    newvertexposition = applyParentTRS(_selected.geometry.vertices[i], _selected, scaleVector)
+
+                    // get the position of vertex handler
+
+                     if ( scene.getObjectByName( 'vxc_'+i ) ) {
+
+                        var papa = scene;
+
+                        papa.getObjectByName( 'vxc_'+i ).position.copy(newvertexposition);
+                        papa.getObjectByName( 'vxc_'+i ).lookAt(camera.position)
+
+                     }else{//create new vertex handler
+
+                        // console.log('adding new vertex','vxc_'+i )
+
+                        var geometry = new THREE.PlaneGeometry( 0.03, 0.03 );
+
+                        var material = new THREE.MeshBasicMaterial( { color:0xffffff,side: THREE.DoubleSide, depthTest: false, map: createDot(whenNselected) ,} );
+
+                        material.transparent = true ;
+                       
+                        var vrtx = new THREE.Mesh( geometry, material );
+                        vrtx.renderOrder = 1;
+
+                        vrtx.position.copy(newvertexposition);
+                        vrtx.name = 'vxc_'+i ;
+                        vrtx.userData = { VertexIndex: i , type: "vrtx" };
+                        Interactablevrt.push(vrtx)
+                        vrtx.lookAt(camera.position)
+                        scene.add( vrtx );
+                      
+                     }
+
+
+                }
+
+            }
+}
+
+}
+
+function updatewireframe() {
+               _selected.remove( _selected.getObjectByName( _selected.name+"wf", true ) );
+                var geo = new THREE.EdgesGeometry( _selected.geometry ); // or WireframeGeometry
+                var mat = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2 } );
+                var wireframe = new THREE.LineSegments( geo, mat );
+                wireframe.name = _selected.name+"wf";
+                _selected.add( wireframe );
+}
+
+//to do: add wireframe mode
+
+var localcontainer = scene;
+
+function emptyArray(array) {
+    for (var i = 0; i < array.length; i++) {
+        scene.remove( array[i] )
+    }
+
+
+}
+
+function EditModel (){
+                
+                console.log(Interactablevrt.length,'Before')
+                removeArrayOutline()
+                 Outline('add')
+                emptyPivot(pivot)
+                //on mode state change selected object should be cleared
+                
+
+                if (mode == 0) {
+                    mode = 1
+                   _('edit').innerHTML = 'disable editing'
+                    vertexui.Draw();
+                    localcontainer = _selected;
+                    console.log('editing enabled')
+
+                }else{
+                    mode = 0
+                    localcontainer = scene;
+                    objectdealingwith = _selected;
+                    _selectedArray[_selected.name] = _selected
+
+                    emptyArray(Interactablevrt)
+                    Interactablevrt = []
+
+                    _('edit').innerHTML = 'edit'
+
+                }
+
+                console.log(Interactablevrt.length,'after')
+}
+
+
+
+
+function Outline(todo,obj){
+
+                
+
+
+
+                if (obj == undefined) {
+
+                    if (_selected == null) {return}//prevent error
+
+                    obj = _selected;
+                }
+
+                // console.log(todo,obj.name)
+
+                //to do disable drag obj in mode 1
+                //check if it's a vertex or object
+                if (obj.userData.VertexIndex == undefined) {
+
+                    if (todo == 'add') {
+
+                        if (!obj.getObjectByName( obj.name+"wf", true ) ) {
+
+                                var geo = new THREE.EdgesGeometry( obj.geometry );
+                                var mat = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2 } );
+                                var wireframe = new THREE.LineSegments( geo, mat );
+
+
+                                wireframe.name = obj.name+"wf";
+
+                                wireframe.scale.multiplyScalar(1.01);
+                                obj.add( wireframe ); 
+                        }else{
+                            l('already selected')
+                        }
+
+                    }else{
+
+                        obj.remove( obj.getObjectByName( obj.name+"wf", true ) );
+                    }
+
+
+
+                }else{
+                    if (todo == 'add') {
+                        obj.material.map = createDot(whenselected)
+                    }else{
+                        obj.material.map = createDot(whenNselected)
+                    }
+                }
+}
+
+function translateobj(){
+
+
+                for (valued in transform){
+                       eval(  "transform."+valued+" =  parseFloat( _(valued+'pos').value.trim() )" )
+                }
+
+                    _selected.position.set(transform.x, transform.y, transform.z);
+                    vertexui.Draw();
+}
+
+function removeArrayOutline(){
+
+                    for (valued in _selectedArray) {
+
+                        Outline('remove',_selectedArray[valued])
+
+                    }
+
+                    _selectedArray  = [];
+}
+
+
+function emptyPivot(pivot) {
+
+            for (var i = pivot.children.length - 1; i >= 0; i--) {
+
+                if ( pivot.children[i].name !== 'indicator') {
+                    util.detach( pivot.children[i] , pivot, scene );
+                }
+                
+            }
+
+            pivot.position.set(0,0,0)
+            pivot.rotation.set(0,0,0)
+            pivot.scale.set(1,1,1)
+}
+
+    // we need to set new pivot whenever a new object is selected
+
+    function newPivot(){
+            emptyPivot(pivot)
+            pivot.position.copy( getCentroid(_selectedArray) )
+            // pivot.rotation.copy( _selected.rotation )
+    }
+
+    function setPivot() {
+
+                        for (valued in _selectedArray){
+                        //ensure code
+                            
+                            if( !pivot.getObjectByName( _selectedArray[ valued ].name ) ){
+
+                                // pivot.add( _selectedArray[ valued ] );
+                                //changes the global position
+                                util.attach( _selectedArray[ valued ], scene, pivot );
+
+                            }
+                        }                                           // body...
+    }
+
+function instantiate(geotyp){
+
+                
+
+                var sidetyp;
+                if (geotyp == 'Plane' || geotyp == 'Circle') {
+                    sidetyp = 'DoubleSide';
+                }else{
+                    sidetyp = 'FrontSide';
+                }
+
+     
+                var newg = geotyp.charAt(0).toUpperCase()+geotyp.toLowerCase().slice(1, geotyp.length)
+              
+
+                eval( "var geometry = new THREE."+newg+"Geometry()" ) ;
+
+             
+
+                eval ( "var material = new THREE.MeshLambertMaterial({ shading: THREE.FlatShading, side: THREE."+sidetyp+"}) " )
+
+
+                
+
+
+
+                var newmesh = new THREE.Mesh( geometry, material )
+
+                randid = newg+InteractableObj.length;
+
+                if (scene.getObjectByName(randid)) {
+                    randid = randid+'_-'
+                }
+
+                newmesh.name = randid;
+
+                newmesh.userData = { type: 'mesh' };
+
+                if (mode == 1) {
+
+                    var singleGeometry = new THREE.Geometry();
+
+                    localcontainer.updateMatrix(); // as needed
+                    singleGeometry.merge(localcontainer.geometry, localcontainer.matrix);
+
+                    newmesh.updateMatrix(); // as needed
+                    singleGeometry.merge(newmesh.geometry, newmesh.matrix);
+
+                    var material = localcontainer.material;
+                    var newmesh = new THREE.Mesh(singleGeometry, material);
+                    
+                    scene.remove(localcontainer);
+
+                    vertexui.Draw();
+                }
+
+
+
+                scene.add( newmesh );
+
+                removeArrayOutline()
+                _selectedArray[newmesh.name] = newmesh;
+                
+
+                
+                Outline('remove')
+
+                _selected = newmesh
+
+                InteractableObj.push(newmesh)
+                setupenv()
+
+               code[newmesh.name] = ""
+
+
+               objectdealingwith = _selected;
+                
+               
+
+               // when objects are added to the pivot the children doesnot increases
+               // fix pivot point pb
+               console.log( _selected.name,'new object declared')
+               emptyPivot(pivot) 
+
+               setTimeout(setPivot, 200) 
+               // setPivot()
+}
+            
+var sensitivity = 2.2;
+
+function cmraAngle(theta,phi) {
+        var  pos = camera.position.sub(center),
+        radius = pos.length()
+
+        pos.x = radius * Math.sin(theta) * Math.cos(phi);
+        pos.z = radius * Math.sin(theta) * Math.sin(phi);
+        pos.y = radius * Math.cos(theta);
+
+        camera.position.add(center);
+        camera.lookAt(center);
+
+        //optimization (DrawVertexUI is changing position unnecessarily [it should just change the direction face is facing] )
+        // DrawVertexUI();
+        //to do fix
+        vertexui.vertexlookat()
+}
+
+function drag(deltaX, deltaY) {
+    
+    var radPerPixel = (Math.PI / (180 * sensitivity)),
+        deltaPhi = radPerPixel * -deltaX,
+        deltaTheta = radPerPixel * deltaY,
+        pos = camera.position.sub(center),
+        radius = pos.length(),
+
+        //it is cos because of it is taken as an adjacent angle, so theta decides the height
+        theta = Math.acos( pos.y / radius ),
+        //phi the second value of function  cmraAngle() decides the lateral angle
+        phi = Math.atan2(pos.z, pos.x);
+
+        // autoalign if exceed the limit ( do it for lateral axis as well )
+        theta = Math.min(Math.max(theta - deltaTheta, 0), Math.PI);
+        phi -= deltaPhi;
+
+
+        cmraAngle(theta,phi);} 
+
+
+
+
+
+
+function SelectionBox( camera, deep ) {
+
+        var frustum = new THREE.Frustum();
+        var center = new THREE.Vector3();
+        this.camera = camera;
+        this.scene = InteractableObj;
+
+        
+        this.startPoint = new THREE.Vector3();
+        this.endPoint = new THREE.Vector3();
+        this.collection = [];
+        this.deep = deep || Number.MAX_VALUE;
+
+        SelectionBox.prototype.select = function ( startPoint, endPoint ) {
+
+            this.startPoint = startPoint || this.startPoint;
+            this.endPoint = endPoint || this.endPoint;
+            this.collection = [];
+
+            if (mode == 0) {
+                this.scene = InteractableObj;
+            }else{
+                this.scene = Interactablevrt;
+            }
+
+            this.updateFrustum( this.startPoint, this.endPoint );
+            this.searchChildInFrustum( frustum, this.scene );
+
+            return this.collection;
+
+        };
+
+        SelectionBox.prototype.updateFrustum = function ( startPoint, endPoint ) {
+
+            startPoint = startPoint || this.startPoint;
+            endPoint = endPoint || this.endPoint;
+
+            this.camera.updateProjectionMatrix();
+            this.camera.updateMatrixWorld();
+
+            var tmpPoint = startPoint.clone();
+            tmpPoint.x = Math.min( startPoint.x, endPoint.x );
+            tmpPoint.y = Math.max( startPoint.y, endPoint.y );
+            endPoint.x = Math.max( startPoint.x, endPoint.x );
+            endPoint.y = Math.min( startPoint.y, endPoint.y );
+
+            var vecNear = this.camera.position.clone();
+            var vecTopLeft = tmpPoint.clone();
+            var vecTopRight = new THREE.Vector3( endPoint.x, tmpPoint.y, 0 );
+            var vecDownRight = endPoint.clone();
+            var vecDownLeft = new THREE.Vector3( tmpPoint.x, endPoint.y, 0 );
+            vecTopLeft.unproject( this.camera );
+            vecTopRight.unproject( this.camera );
+            vecDownRight.unproject( this.camera );
+            vecDownLeft.unproject( this.camera );
+
+            var vectemp1 = vecTopLeft.clone().sub( vecNear );
+            var vectemp2 = vecTopRight.clone().sub( vecNear );
+            var vectemp3 = vecDownRight.clone().sub( vecNear );
+            vectemp1.normalize();
+            vectemp2.normalize();
+            vectemp3.normalize();
+
+            vectemp1.multiplyScalar( this.deep );
+            vectemp2.multiplyScalar( this.deep );
+            vectemp3.multiplyScalar( this.deep );
+            vectemp1.add( vecNear );
+            vectemp2.add( vecNear );
+            vectemp3.add( vecNear );
+
+            var planes = frustum.planes;
+
+            planes[ 0 ].setFromCoplanarPoints( vecNear, vecTopLeft, vecTopRight );
+            planes[ 1 ].setFromCoplanarPoints( vecNear, vecTopRight, vecDownRight );
+            planes[ 2 ].setFromCoplanarPoints( vecDownRight, vecDownLeft, vecNear );
+            planes[ 3 ].setFromCoplanarPoints( vecDownLeft, vecTopLeft, vecNear );
+            planes[ 4 ].setFromCoplanarPoints( vecTopRight, vecDownRight, vecDownLeft );
+            planes[ 5 ].setFromCoplanarPoints( vectemp3, vectemp2, vectemp1 );
+            planes[ 5 ].normal.multiplyScalar( - 1 );
+
+        };
+
+        SelectionBox.prototype.searchChildInFrustum = function ( frustum, object ) {
+
+            if ( object.isMesh ) {
+
+                if ( object.material !== undefined ) {
+
+                    object.geometry.computeBoundingSphere();
+
+                    center.copy( object.geometry.boundingSphere.center );
+
+                    center.applyMatrix4( object.matrixWorld );
+
+                    if ( frustum.containsPoint( center ) ) {
+
+                        this.collection.push( object );
+
+                    }
+
+                }
+
+            }
+
+            if ( ARlength(object) > 0  ) {
+                for(x in object){
+                    this.searchChildInFrustum( frustum, object[ x ] );
+                }
+            }
+
+            // if ( object.children.length > 0 ) {
+
+            //     for ( var x = 0; x < object.children.length; x ++ ) {
+
+            //         this.searchChildInFrustum( frustum, object.children[ x ] );
+
+            //     }
+
+            // }
+
+        };
+}
+
+function selectioninst( renderer, cssClassName ) {
+
+
+            this.element = document.createElement( 'div' );
+            this.element.classList.add( cssClassName );
+            this.element.style.pointerEvents = 'none';
+
+            this.renderer = renderer;
+
+            this.startPoint = { x: 0, y: 0 };
+            this.pointTopLeft = { x: 0, y: 0 };
+            this.pointBottomRight = { x: 0, y: 0 };
+
+            selectioninst.prototype.start =  function(event ) {
+
+            this.renderer.domElement.parentElement.appendChild( this.element );
+
+            this.element.style.left = event.clientX + 'px';
+            this.element.style.top = event.clientY + 'px';
+            this.element.style.width = '0px';
+            this.element.style.height = '0px';
+
+            this.startPoint.x = event.clientX;
+            this.startPoint.y = event.clientY;
+
+            };
+
+            selectioninst.prototype.move =  function( event ) {
+
+            this.pointBottomRight.x = Math.max( this.startPoint.x, event.clientX );
+            this.pointBottomRight.y = Math.max( this.startPoint.y, event.clientY );
+            this.pointTopLeft.x = Math.min( this.startPoint.x, event.clientX );
+            this.pointTopLeft.y = Math.min( this.startPoint.y, event.clientY );
+
+            this.element.style.left = this.pointTopLeft.x + 'px';
+            this.element.style.top = this.pointTopLeft.y + 'px';
+            this.element.style.width = ( this.pointBottomRight.x - this.pointTopLeft.x ) + 'px';
+            this.element.style.height = ( this.pointBottomRight.y - this.pointTopLeft.y ) + 'px';
+
+            };
+
+            selectioninst.prototype.end = function(){
+
+            this.element.parentElement.removeChild( this.element );
+
+            };
+} 
+    
+
+
+
+
+var __mouse = new THREE.Vector2();//global mouse
+var offsetPlane = new THREE.Vector3()
+plane = new THREE.Mesh(new THREE.PlaneBufferGeometry(500, 500, 8, 8), new THREE.MeshLambertMaterial(
+                                                                    {color: 0xfff00, transparent: true, opacity: 0}) );
+scene.add(plane);
+
+
+function setInitialOffset(){
+
+            _raycaster.setFromCamera( __mouse, camera );
+
+            var intersectsPlane = _raycaster.intersectObject(plane);
+
+  
+            offsetPlane.copy(intersectsPlane[0].point).sub(plane.position);
+}
+
+function updatePlane() {
+
+            if (objectdealingwith) {
+                plane.position.copy(objectdealingwith.position);
+                plane.lookAt(camera.position);
+            }            
+} 
+
+
+function addMouseHandler(domObject, drag, zoomIn, zoomOut) {
+
+    var startDragX = null,
+        startDragY = null;
+
+    function mouseWheelHandler(e) {
+
+            e = window.event || e;
+            var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+
+            if (delta < 0 && zoomOut){
+                zoomOut(delta);
+            }else if (zoomIn){
+                zoomIn(delta);
+            }
+
+            e.preventDefault();
+    }
+
+    function normalize(value){
+        return ( ( value / window.innerWidth ) * 2 - 1);
+    }
+
+    function toRadians(angle) {
+        return angle * (Math.PI / 180);
+    }
+
+    function toDegrees(angle) {
+        return angle * (180 / Math.PI);
+    }
+
+
+    function changevectorQ(initials,object) {
+
+            var changedvector = new THREE.Vector3();
+
+
+            if ( pivot.getObjectByName(object.name) ) {
+
+                var tmpPOS = new THREE.Vector3().copy( applyParentTRS(object.position,pivot,pivot.scale) )
+            }else{
+                 var tmpPOS = new THREE.Vector3().copy(object.position)
+            }
+
+            changedvector = tmpPOS.clone().sub(initials).divide(_selected.scale);
+
+
+            var oldEuler = new THREE.Euler(_selected.rotation.x, _selected.rotation.y, _selected.rotation.z, 'XYZ' );
+            var quat = new THREE.Quaternion();
+            quat.setFromEuler(oldEuler).conjugate();
+            changedvector.applyQuaternion(quat)            
+            
+            return changedvector;
+    }
+
+
+    function updateVRT(changevector,object) {
+            _selected.geometry.verticesNeedUpdate = true;
+            // _selected.geometry.vertices[ objectdealingwith.userData.VertexIndex ] = 
+            _selected.geometry.vertices[ object.userData.VertexIndex ].add(changevector)
+
+            updatewireframe()
+            _selected.geometry.computeBoundingSphere()
+    }   
+
+        //empty pivot tomorrow
+        //restrict plane co-ordiante with X,Y and Z
+        // position in UPdateRTS should update object dealing with so that it will be compatable with edit mode (maybe selection tool)
+
+
+
+// Rotate an object around an arbitrary axis in world space       
+function rotateAroundWorldAxis(object, axis, radians) {
+    var rotWorldMatrix = new THREE.Matrix4();
+    rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
+    rotWorldMatrix.multiply(object.matrix);        // pre-multiply
+    object.matrix = rotWorldMatrix;
+    object.rotation.setFromRotationMatrix(object.matrix);
+}
+
+    function updateRTS(offset,type) {
+
+
+            var change = new THREE.Vector3()
+
+
+            if (type == 'rotation' && witness.axisBtn == false) {
+                witness.axisBtn = 'y'
+                // exception for rotation
+            }
+
+            
+            if (type == 'position'){
+                witness.drag = true;
+                return;
+            }else{
+                offset = -offset*3
+                change.x = offset
+                change.y = offset
+                change.z = offset             
+            }
+
+            //we dont need pivot for position chage, we need it for rotation and scale
+
+            var intialarray = []
+
+            function axisToVector(xis) {
+
+                switch(xis){
+                    case 'x':
+                        return new THREE.Vector3(1,0,0)
+                    case 'y':
+                        return new THREE.Vector3(0,1,0)
+                    case 'z':
+                        return new THREE.Vector3(0,0,1)                                            
+                }
+    
+            }
+
+            function makemove(targetObj) {
+
+                eval('var objscale = {x:targetObj.'+type+'.x , y:targetObj.'+type+'.y , z:targetObj.'+type+'.z}')
+
+                if (witness.doubleAxisBtn !== false) {
+                    rotateAroundWorldAxis(targetObj, axisToVector(witness.doubleAxisBtn), eval('change.'+witness.doubleAxisBtn) );
+                }else if ( witness.axisBtn == false) {
+                    eval('targetObj.'+type+'.set(objscale.x + change.x,objscale.y +change.y,objscale.z +change.z)')
+                }else{
+                    eval('targetObj.'+type+'.'+witness.axisBtn+' = objscale.'+witness.axisBtn+' + change.x')
+                }
+
+
+            }
+            
+
+            for (valued in _selectedArray){
+                intialarray[_selectedArray[valued].name] = applyParentTRS(_selectedArray[valued].position,pivot,pivot.scale)  
+            }
+          
+            makemove(pivot)
+
+            for (valued in _selectedArray){
+                if ( _selectedArray[valued].userData.type == 'vrtx' ){
+                    var changevector = new THREE.Vector3();
+                    changevector = changevectorQ(intialarray[_selectedArray[valued].name],_selectedArray[valued])
+                    updateVRT(changevector,_selectedArray[valued])
+                }
+            }
+
+        
+            
+    }
+
+    function setSpaceDrag(e) {
+            startDragX = e.clientX;
+            startDragY = e.clientY;
+    }
+
+    function mouseDownHandler(e) {
+       
+            toggleMenu("hide")
+            controlsmouse.startX = event.clientX;
+            controlsmouse.startY = event.clientY;
+
+            if (event.button == 2) {
+                e.preventDefault()
+                witness.rightClick = true
+                setSpaceDrag(event)
+                return;
+            }
+
+            //if event.button == 2
+            if (witness.boxselect == true) {
+
+                witness.boxselect = 'GO'
+                //create fake selection
+                FakeSelector.start(e)
+                Fakefrustum.startPoint.set(
+                        ( event.clientX / window.innerWidth ) * 2 - 1,
+                        - ( event.clientY / window.innerHeight ) * 2 + 1,
+                        0.5 );
+
+            }else{
+
+
+                //new raycaster
+
+                //raycast for vertex and object
+                _raycaster.setFromCamera( _mouse, camera );
+                var intersects = _raycaster.intersectObjects( InteractableObj )
+                var vrtsects = _raycaster.intersectObjects( Interactablevrt )
+
+                // div(
+                //     "onclick:"ok(),
+                //     "body:"button(),
+                //     )
+
+                //peek a boo, it's a vertex
+                if ( vrtsects.length > 0 ){
+
+
+                    // if ( shiftDWN == false && objectdealingwith) {
+
+                            // if(objectdealingwith.userData.type == 'vrtx'){
+
+                                // objectdealingwith.material.map = createDot(whenNselected)
+                                //remove outline from 
+                            // }
+                            
+                        // }
+                           
+                    
+                    objectdealingwith = vrtsects[0].object;
+                    objectdealingwith.material.map = createDot(whenselected)
+
+                    // vrtselected = true;
+
+                //peek a boo, it's an object
+                }else if ( intersects.length > 0 && mode == 0){
+
+
+                        if ( mode == 1 && intersects[0].object !== _selected) {
+                            // disable selection in edit mode (stupidity)
+                        }else{ 
+                                
+                                _selected = intersects[0].object;
+                                setupenv();
+                                objectdealingwith = _selected;
+                             
+                        
+                        }
+
+
+
+                }
+
+                
+                    // to do duplicating an object
+                    //merge objects
+
+                    //contradition object with the same name
+
+                if ( vrtsects.length > 0 ||  ( intersects.length > 0 && mode == 0) ){
+                        //fixing objectdealingwith not defined
+                        witness.drag = true;
+
+                        //two cases[ case1: object are select with shift and mouse down is called and case2: when mouse down is called when object is attempted to be moved, in that case we should know that multiple objects are selected and thus no action should be taken other than dragging object]
+                        
+                        //only remove outline of previous selected object is multiple object is not seleted and and shift is not pressed
+
+                        // selectedArray[objectdealingwith.name] !== undefined means if object is being selected for the first time
+
+                        if (shiftDWN == false && _selectedArray[objectdealingwith.name] == undefined) {
+
+                            //deals with both edit and object mode
+                            console.log('new object')
+                            removeArrayOutline()
+                            _selectedArray[objectdealingwith.name] = objectdealingwith;
+                            Outline('add',objectdealingwith)
+                            // console.log('clean', ARlength(_selectedArray) )
+
+                        }else{
+                            console.log(shiftDWN,'adding object')
+                            _selectedArray[objectdealingwith.name] = objectdealingwith;
+                            
+                        }
+
+
+                        //store where object is selected
+                        newPivot()
+                        updatePlane()
+                        setInitialOffset()
+                }else{//if no object selected then we are dragging the space
+
+                    setSpaceDrag(event)
+
+                }
+            }
+    }
+
+    //note multiplying a number by the inverse is same as dividing the original matrix
+
+    function doSpaceDrag(e) {
+            if (startDragX === null || startDragY === null || witness.drag == true)
+                return;
+
+            if (drag)
+                drag(e.clientX - startDragX, e.clientY - startDragY);
+
+            startDragX = e.clientX;
+            startDragY = e.clientY;      
+    }
+
+        //objectdealing with shall be set when we will be dealing with selection
+
+        //now update plane is not dependent on rapid ray cast detection, it is dependent on if there is an objectdealinwith
+        //to do help with vertex manipulation
+
+
+
+    function mouseMoveHandler(e) {
+
+        controlsmouse.CurrentX = event.clientX;
+        controlsmouse.CurrentY = event.clientY;
+
+        var rect = _domElement.getBoundingClientRect();
+        __mouse.x = ( ( controlsmouse.CurrentX - rect.left ) / rect.width ) * 2 - 1;
+        __mouse.y = - ( ( controlsmouse.CurrentY - rect.top ) / rect.height ) * 2 + 1;
+
+
+        var change =  (normalize(TAGmouse.X)-normalize(controlsmouse.CurrentX))+ (normalize(TAGmouse.Y)-normalize(controlsmouse.CurrentY))
+        TAGmouse.X = controlsmouse.CurrentX
+        TAGmouse.Y = controlsmouse.CurrentY
+
+
+        if (witness['transformOperation'] !== false) {
+            witness['transformOperation'] == 'position' ? updateRTS(-change,'position') : updateRTS(change, witness.transformOperation)
+        }
+
+
+            if (witness.rightClick == true) {
+                doSpaceDrag(event)
+                return
+            }
+
+            if (witness.boxselect == 'GO') {
+                //fake selector
+
+                FakeSelector.move(e)
+                //fake selector
+
+                Fakefrustum.endPoint.set(
+                        ( event.clientX / window.innerWidth ) * 2 - 1,
+                        - ( event.clientY / window.innerHeight ) * 2 + 1,
+                        0.5 );
+
+                    var allSelected = Fakefrustum.select();
+
+                    for ( var i = 0; i < allSelected.length; i ++ ) {
+
+                        //set object dealing with
+
+                        if (i == 0) {
+                            objectdealingwith = allSelected[ i ]
+                        }
+
+                        //object edaling with is set at two points, at mouse down and selection box ( both included are the only ways user could select object)
+
+                        _selectedArray[ allSelected[ i ].name ] = allSelected[ i ];
+                        Outline('add', allSelected[ i ] )
+
+                        //type  of obj is handled by the function
+                    }
+
+                    newPivot()
+
+
+            }else{  
+
+                //to do unlink copy
+
+                    var rect = _domElement.getBoundingClientRect();
+
+                    _mouse.x = ( ( event.clientX - rect.left ) / rect.width ) * 2 - 1;
+                    _mouse.y = - ( ( event.clientY - rect.top ) / rect.height ) * 2 + 1;
+
+                    if (witness.drag == true) {
+
+                        //drag moving
+                        
+
+                            if (mode == 1 && objectdealingwith.userData.type == 'mesh') {
+                                    return;//objects can't be dragged in edit mode
+                            }
+
+
+                            _raycaster.setFromCamera( _mouse, camera );
+
+                            if ( objectdealingwith  ) {
+                                emptyPivot(pivot)
+
+                                // console.log('on work')
+
+                                    // console.log('in green plane',objectdealingwith.name)
+
+                                    var initialPOS = new THREE.Vector3().copy(objectdealingwith.position.clone());
+
+                                    var intersectsPlane = _raycaster.intersectObject(plane);
+                                    var newPlanevector = new THREE.Vector3().copy(intersectsPlane[0].point).sub(plane.position)
+
+                                    var chOfset = new THREE.Vector3().copy( newPlanevector.sub(offsetPlane) )
+                                    var transformArray = {'x':0,'y':0,'z':0}
+
+                                    //grab button plus (x y z) is pressed
+
+                                    function zeroOtherAxis(choosenAxis) {
+
+                                        // console.log(choosenAxis)
+
+                                            for(key2 in transformArray){
+
+                                                if (choosenAxis !== key2) {
+                                                    eval('chOfset.'+key2+' = 0')
+                                                }
+                                                    
+                                            }
+                                    }
+
+                                    if(witness.axisBtn !== false) zeroOtherAxis(witness.axisBtn)
+
+
+
+
+                                    objectdealingwith.position.add( chOfset );
+
+                                    offsetPlane.copy(intersectsPlane[0].point).sub(plane.position);
+
+                                    var changevector = new THREE.Vector3();
+                                    changevector = changevectorQ(initialPOS,objectdealingwith)
+
+                                    // to do learn conjugate and learn how quaternion works
+                         
+                      
+                                    if (objectdealingwith.userData.type == 'vrtx') {
+                                        //chanage original vertex
+                                        updateVRT(changevector,objectdealingwith)
+                                    }
+
+                                    //secondary selected object
+                                    for (valued in _selectedArray){
+                                        if (_selectedArray[valued] !== objectdealingwith) {
+
+                                           _selectedArray[valued].position.add( chOfset )
+
+                                           if ( objectdealingwith.userData.type == 'vrtx' ) {
+                                                updateVRT(changevector,_selectedArray[valued])
+                                           }
+
+                                        }
+                                    }
+
+
+
+
+                                newPivot()
+                                //after the change
+                                return;
+
+                            }
+
+
+                      }else{
+
+                            updatePlane()
+
+
+                            doSpaceDrag(event)
+                        
+
+
+                      }
+
+
+
+            }
+        }
+
+        let menuVisible = false;
+
+        const toggleMenu = command => {
+          __('menu').style.display = command === "show" ? "block" : "none";
+          menuVisible = !menuVisible;
+        };
+
+    function contexMenuOn(left,top) {
+                  __('menu').style.left = `${left}px`;
+                  __('menu').style.top = `${top}px`;
+                  toggleMenu("show");
+    }
+
+
+
+
+    function mouseUpHandler(e) {
+
+                    console.log('mouse up')
+                    setPivot()
+
+                    controlsmouse.endx = event.clientX;
+                    controlsmouse.endY = event.clientY;
+
+                    if (witness.rightClick == true && (controlsmouse.endx == controlsmouse.startX) ) {
+
+                        var intersects = _raycaster.intersectObjects( InteractableObj )
+
+                        if (intersects.length > 0 && mode == 0) {
+                            _selected = intersects[0].object;
+                            setupenv();
+                            witness.rightClickObject = true;
+                        }
+
+                        contexMenuOn(event.pageX,event.pageY)
+                        witness.rightClick = false
+                        e.preventDefault()
+                        // alert('menu')
+                        // return
+                    }
+
+                    if (witness.boxselect == 'GO') {
+                        // emptyPivot(pivot)
+
+                        FakeSelector.end()
+                    }
+                    
+
+
+                    for (key in witness){
+                        witness[key] = false;
+                    }
+
+                    // witness.boxselect = false;
+                    // witness.drag = false;
+
+
+                    // vrtselected = false;
+                    // mouseMoveHandler.call(this, e);
+                    startDragX = null;
+                    startDragY = null;
+                    // domElement.removeChild( _('fakeSelect') )
+                    // e.preventDefault();
+    }
+
+    function getbtn2(code) {
+
+            return code.slice(3,4).toLowerCase()
+    }
+
+    function copyObject(){
+                emptyPivot(pivot)
+                var newSARR = []
+
+
+                //maybe there is a length to the name
+                for(valued in _selectedArray){
+
+                    console.log(pivot.children.length)
+
+                    var copy = new THREE.Mesh( _selectedArray[valued].geometry, _selectedArray[valued].material );
+
+                    copy.name = _selectedArray[valued].name+"_"+scene.children.length
+                    copy.userData = { type: 'mesh' };
+
+                    scene.add( copy );
+
+                    copy.position.copy(_selectedArray[valued].position)
+                    copy.scale.copy(_selectedArray[valued].scale)
+                    copy.rotation.copy(_selectedArray[valued].rotation)
+                    
+                    
+
+                    newSARR[copy.name] = copy
+                    InteractableObj.push(copy)
+                    
+
+                    _selected = copy;
+                    
+            
+                }
+
+                // to do rotation by a degree (numpad)
+                //reference rules with instantiate
+
+                removeArrayOutline();
+                objectdealingwith = _selected;
+                _selectedArray = newSARR;
+                //add array outline
+                witness.position = true;
+                witness.drag = true;
+                updatePlane()
+                setInitialOffset()
+    }
+
+    function deleteObject(){
+                
+                emptyPivot(pivot)
+ 
+
+                for (valued in _selectedArray){
+
+     
+
+                    if (_selectedArray[valued].userData.type == 'mesh') {
+
+                        for (var i = 0; i < InteractableObj.length; i++) {
+
+                            if (InteractableObj[i].name == _selectedArray[valued].name){
+                                InteractableObj.splice(i, 1);
+                            }
+                            
+                        }
+
+
+                        scene.remove(_selectedArray[valued])
+                        _selectedArray[valued].geometry.dispose();
+                        _selectedArray[valued].material.dispose();
+                        _selectedArray[valued] = undefined;
+                        _selected = null
+
+
+                                         
+                    }else{
+
+                        var nwGeometry = new THREE.Geometry();
+                        var crtVRT = _selectedArray[valued].userData.VertexIndex;
+
+
+                        //Scan vertices
+                        for (var i = _selected.geometry.vertices.length - 1; i >= 0; i--) {
+
+                            if( i !== crtVRT){
+                                nwGeometry.vertices.push( _selected.geometry.vertices[i] )
+                            }
+                        }
+
+
+                        //Scan faces
+                        for (var i = _selected.geometry.faces.length - 1; i >= 0; i--) {
+
+                            var faco = _selected.geometry.faces[i];
+
+                            console.log(faco,crtVRT)
+
+                            if(faco.a == crtVRT || faco.b == crtVRT || faco.c == crtVRT){
+                        
+                            }else{
+                                nwGeometry.faces.push( new THREE.Face3(faco.a, faco.b, faco.c) )
+                            }
+
+                        }
+
+                        
+
+                        var copy = new THREE.Mesh( nwGeometry, _selected.material );
+                        copy.name = nwGeometry.name
+                        scene.add( copy );
+                        // to do
+                        copy.position.copy(_selected.position)
+                        copy.scale.copy(_selected.scale)
+                        copy.rotation.copy(_selected.rotation)
+
+                        scene.remove(_selected)
+                        _selected = copy;
+                        //delete vertex itself
+                    }
+                }
+
+                _selectedArray = []
+                objectdealingwith = undefined
+    }
+
+    function logKey(e) {
+
+         
+            var bool
+            if (event.type  == 'keyup'){ bool = false }else{ bool = true; }
+
+            if (witness.transformOperation !== false ) {
+
+                if ( (e.code == 'KeyX' || e.code == 'KeyY' || e.code == 'KeyZ') && bool == true ) {
+
+                    pressed = e.code.toLowerCase()
+
+                    witness.axisBtn !== false ? witness.doubleAxisBtn = witness.axisBtn : witness.axisBtn = pressed.slice(3,4) 
+                    //press x two times to make it rotate on world axis<p></p>
+                    return;
+
+                }                
+            }
+
+
+
+            if ( e.code == 'KeyC' && bool == true ) {
+                
+                copyObject()
+
+            }else if ( e.code == 'KeyG' && bool == true ) {
+
+                witness.transformOperation = 'position'
+                // witness.position = true;
+                witness.drag = true;
+                TAGmouse.X = controlsmouse.CurrentX
+                TAGmouse.Y = controlsmouse.CurrentY
+
+                updatePlane()
+                setInitialOffset()
+            }else if ( e.code == 'KeyS' && bool == true ) {
+                // witness.scale = true;
+                witness.transformOperation = 'scale'
+                TAGmouse.X = controlsmouse.CurrentX
+                TAGmouse.Y = controlsmouse.CurrentY
+            }else if ( e.code == 'KeyR' && bool == true ) {
+                // witness.rotation = true;
+                witness.transformOperation = 'rotation'
+                TAGmouse.X = controlsmouse.CurrentX
+                TAGmouse.Y = controlsmouse.CurrentY
+            }else if ( e.code == 'KeyX' && bool == true ) {
+                deleteObject()
+            }else if ( e.code == 'KeyB' && bool == true ) {
+                witness.boxselect = true;
+            }else if ( e.code == 'Tab' && bool == true ) {
+                EditModel();
+            }else if ( e.code == 'Numpad1') {
+                cmraAngle(Math.PI/2,0)
+            }else if ( e.code == 'Numpad3') {
+                cmraAngle(Math.PI/2,-Math.PI/2)
+            }else if ( e.code == 'Numpad5') {
+                cmraAngle(0,-Math.PI/2)
+            }
+
+            if (e.code == 'ShiftLeft') {  
+                    shiftDWN = bool  
+
+            }else if (e.code == 'KeyA' && bool == true) {
+
+
+                emptyPivot(pivot)
+                removeArrayOutline();
+
+            }
+
+ 
+    }
+
+    //to do scale objetc on local axis
+    //numpad: add quantity of change 
+
+        // to do bug _selected position becomes nan (fixed)
+
+    domObject.addEventListener("mousewheel", mouseWheelHandler);
+    domObject.addEventListener("DOMMouseScroll", mouseWheelHandler);
+    domObject.addEventListener("mousedown", mouseDownHandler);
+    domObject.addEventListener("mousemove", mouseMoveHandler);
+    domObject.addEventListener("mouseup", mouseUpHandler);
+    document.addEventListener('keyup', logKey);
+    document.addEventListener('keydown', logKey);
+    window.addEventListener("contextmenu", e => e.preventDefault());
+
+    }
+
+
+function setTransformValues(){
+    _('xpos').value = _selected.position.x
+    _('ypos').value = _selected.position.y
+    _('zpos').value = _selected.position.z
+}
+
+
+function setupenv(){   
+    Outline('add')
+    setTransformValues()
+}
+
+
+function zoomIn() {
+    camera.position.sub(center).multiplyScalar(0.9).add(center); 
+}
+
+function zoomOut() {
+    camera.position.sub(center).multiplyScalar(1.1).add(center);
+        
+}
+
+var Controls = new addMouseHandler(renderer.domElement, drag, zoomIn, zoomOut);
+
+
+
+
+var animate = function () {
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+};
+
+animate();
+
+window.addEventListener("resize",  updaterender , true);
+_('edit').addEventListener("click", EditModel );
+_('xpos').addEventListener("input", translateobj );
+_('ypos').addEventListener("input", translateobj );
+_('zpos').addEventListener("input", translateobj );
+
+        </script>
+    </body>
+</html>
