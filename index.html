@@ -5,6 +5,42 @@
         <link rel="stylesheet" type="text/css" href="main.css">
     </head>
 
+    <style>
+        #buildCodeBundle{
+            display: flex;
+            flex-direction: column;
+            gap:5px;
+            padding: 10px;
+        }
+
+        button{
+            background-color: rgba(255,255,255,0.6);
+            border-radius: 5px;
+            border:none;
+            backdrop-filter:blur(30px);
+            width: 100px;
+            padding: 10px 0;
+        }
+
+        #ToolPannel{
+            position: absolute;
+            left:0;
+
+        }
+
+        #rightPannel{
+            display: none;
+        }
+
+        body{
+            margin:0;
+            padding:0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+    </style>
+
 <body>
 
     <div id="tree"> </div>
@@ -21,20 +57,20 @@
       </ul></div>
 
     <div id='ToolPannel'>
-        <button id='add'>
+        
         
         <div id='buildCodeBundle'>
-            <div id='buildCode' onclick="instantiate('Cube')" >Cube</div>
-            <div id='buildCode' onclick="instantiate('Cylinder')" >Cylinder</div>
-            <div id='buildCode' onclick="instantiate('Sphere')" >Sphere</div>
-            <div id='buildCode' onclick="instantiate('Plane')" >Plane</div>
-            <div id='buildCode' onclick="instantiate('Circle')" >Circle</div>
+            <button id='buildCode' onclick="instantiate('Cube')" >Cube</button>
+            <button id='buildCode' onclick="instantiate('Cylinder')" >Cylinder</button>
+            <button id='buildCode' onclick="instantiate('Sphere')" >Sphere</button>
+            <button id='buildCode' onclick="instantiate('Plane')" >Plane</button>
+            <button id='buildCode' onclick="instantiate('Circle')" >Circle</button>
+            <button id='edit'>edit</button>
         </div>
-        <div id='buildCode'> Add </div>
-        </button>
+     
 
-        <button id='edit'>edit</button>
-        <button id="play">></button> </div>
+      
+    
     <div id='rightPannel'>
 
         <center>
